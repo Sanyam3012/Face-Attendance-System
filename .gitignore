@@ -1,0 +1,5 @@
+attendance/
+__pycache__/
+*.pyc
+*.pickle
+*.xlsx
