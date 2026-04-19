@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Attendance System</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 420px;
+            padding: 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(15px);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            text-align: center;
+            color: white;
+        }
+
+        h1 {
+            margin-bottom: 15px;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 15px;
+            border: 3px solid rgba(255,255,255,0.3);
+        }
+
+        button {
+            margin-top: 12px;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 30px;
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0,198,255,0.7);
+        }
+
+        #result {
+            margin-top: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .loader {
+            display: none;
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 10px;
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: rgba(0,0,0,0.3);
+        }
+
+        .footer {
+            margin-top: 10px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Face Attendance</h1>
+
+    <video id="video" autoplay></video>
+
+    <button onclick="capture()">Capture Face</button>
+    <button onclick="getSummary()">Show Attendance Summary</button>
+
+    <div class="loader" id="loader">Processing...</div>
+
+    <div id="result">Waiting...</div>
+
+    <div class="footer">AI Based Attendance System</div>
+</div>
+
+<script>
+    const video = document.getElementById("video");
+
+    // Start webcam
+    navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+        video.srcObject = stream;
+    })
+    .catch(err => {
+        alert("Camera access denied!");
+    });
+
+    // Capture and send image
+    function capture() {
+        let loader = document.getElementById("loader");
+        loader.style.display = "block";
+
+        let canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        let ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+
+        let image = canvas.toDataURL("image/jpeg");
+
+        fetch("/recognize", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({image: image})
+        })
+        .then(res => res.json())
+        .then(data => {
+            loader.style.display = "none";
+
+            let result = document.getElementById("result");
+
+            if (data.name === "Unknown") {
+                result.innerHTML = "❌ Unknown Face";
+                result.style.color = "#ff4b5c";
+            } else {
+                result.innerHTML = "✅ " + data.name + " Marked Present";
+                result.style.color = "#00ffcc";
+            }
+        });
+    }
+
+    // Fetch summary
+    function getSummary() {
+        fetch("/summary")
+        .then(res => res.json())
+        .then(data => {
+            let result = "<h3>Attendance Summary</h3>";
+
+            if (data.length === 0) {
+                result += "No data available";
+            } else {
+                result += "<table><tr><th>Name</th><th>Days Present</th></tr>";
+
+                data.forEach(item => {
+                    result += "<tr><td>" + item.Name + "</td><td>" + item.Days + "</td></tr>";
+                });
+
+                result += "</table>";
+            }
+
+            document.getElementById("result").innerHTML = result;
+        });
+    }
+</script>
+
+</body>
+</html>
